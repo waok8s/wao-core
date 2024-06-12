@@ -22,6 +22,11 @@ type Predictor struct {
 	PowerConsumption *EndpointTerm `json:"powerConsumption,omitempty"`
 	// +optional
 	PowerConsumptionEndpointProvider *EndpointTerm `json:"powerConsumptionEndpointProvider,omitempty"`
+
+	// +optional
+	ResponseTime *EndpointTerm `json:"responseTime,omitempty"`
+	// +optional
+	ResponseTimeEndpointProvider *EndpointTerm `json:"responseTimeEndpointsProvider,omitempty"`
 }
 
 type EndpointTerm struct {

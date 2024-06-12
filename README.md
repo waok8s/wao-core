@@ -15,6 +15,8 @@ CRDs, controllers and libraries for WAO.
     - [Metrics Collector: Differential Pressure](#metrics-collector-differential-pressure)
     - [Predictor: Power Consumption](#predictor-power-consumption)
     - [Predictor: Power Consumption Endpoint Provider](#predictor-power-consumption-endpoint-provider)
+    - [Predictor: Response Time](#predictor-response-time)
+    - [Predictor: Response Time Endpoint Provider](#predictor-response-time-endpoint-provider)
   - [NodeConfigTemplate CRD](#nodeconfigtemplate-crd)
   - [Template Syntax](#template-syntax)
 - [Development](#development)
@@ -106,9 +108,12 @@ spec:
       endpoint: "http://10.0.0.1:5000"
       fetchInterval: 10s
   predictor:
-    powerConsumption:
+    powerConsumption: # a single type of server has a single power consumption model
       type: V2InferenceProtocol
       endpoint: "http://10.0.0.1:8080/v2/models/myModel/versions/v0.1.0/infer"
+    responseTime: # a single type of server has multiple response time models per application, {{.App}} is the template variable
+      type: V2InferenceProtocol
+      endpoint: "http://10.0.0.1:8090/v2/models/myModel:{{.App}}/versions/v0.1.0/infer"
 ```
 
 The above example uses Redfish and DifferentialPressureAPI to collect inlet temperature and differential pressure, and uses V2InferenceProtocol to predict power consumption.
@@ -179,15 +184,51 @@ This part of the spec is used to configure how to get endpoint for power consump
         name: "worker-0-redfish-basicauth"
 ```
 
-If your predictor requires authentication, you can set your Secret in `powerConsumption.basicAuthSecret` while leaving other fields empty.
+#### Predictor: Response Time
+
+This part of the spec is used to configure how to predict response time.
+
+- `type`: `V2InferenceProtocol` or `Fake`.
+- `endpoint`: Endpoint URL. Ignored when `type` is `Fake`.
+- `basicAuthSecret` (Optional): Secret containing username and password for basic authentication. Ignored when the `type` does not require authentication.
+- `fetchInterval` (Unused): Ignored.
+- `{{.App}}` (Optional): Template variable for application name. This is useful when the endpoint needs to include the app name.
 
 ```yaml
-    powerConsumption:
+    responseTime:
+      type: V2InferenceProtocol
+      endpoint: "http://10.0.0.1:8090/v2/models/myModel-{{.App}}/versions/v0.1.0/infer"
+```
+
+#### Predictor: Response Time Endpoint Provider
+
+> [!NOTE]
+> Currently no implementation provides this feature, this is just a placeholder for future use.
+
+This part of the spec is used to configure how to get endpoint for power consumption predictor. This is useful when the endpoint is described in Redfish or other APIs.
+
+- `type`: not yet implemented.
+- `endpoint`: not yet implemented.
+- `basicAuthSecret` (Optional): Secret containing username and password for basic authentication. Ignored when the `type` does not require authentication.
+- `fetchInterval` (Unused): Ignored.
+
+```yaml
+    responseTimeEndpointProvider:
+      type: Redfish
+      endpoint: "https://10.0.0.1"
+      basicAuthSecret:
+        name: "worker-0-redfish-basicauth"
+```
+
+If your predictor requires authentication, you can set your Secret in `responseTime.[*].basicAuthSecret` while leaving other fields empty.
+
+```yaml
+    responseTime:
       type: ""      # Endpoint provider will set this.
       endpoint: ""  # Endpoint provider will set this.
       basicAuthSecret:
         name: "predictor-basicauth"
-    powerConsumptionEndpointProvider:
+    responseTimeEndpointProvider:
       type: Redfish
       endpoint: "https://10.0.0.1"
       basicAuthSecret:

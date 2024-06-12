@@ -2,6 +2,7 @@ package fake
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	waov1beta1 "github.com/waok8s/wao-core/api/wao/v1beta1"
@@ -90,4 +91,58 @@ func (p *FakePowerConsumptionPredictor) Predict(ctx context.Context, cpuUsage, i
 		return 0.0, p.PredictError
 	}
 	return p.PredictValue, nil
+}
+
+// FakeResponseTimePredictor is a fake implementation of predictor.ResponseTimePredictor.
+// PredictValues is a map of app name to response time. "*" is a special key that is used when the app name is not found in the map.
+type FakeResponseTimePredictor struct {
+	EndpointValue string
+	EndpointError error
+
+	PredictValues map[string]float64
+	PredictError  error
+	PredictDelay  time.Duration
+}
+
+var _ predictor.ResponseTimePredictor = (*FakeResponseTimePredictor)(nil)
+
+func NewResponseTimePredictor(endpointValue string, endpointError error, predictValues map[string]float64, predictError error, predictDelay time.Duration) *FakeResponseTimePredictor {
+	return &FakeResponseTimePredictor{
+		EndpointValue: endpointValue,
+		EndpointError: endpointError,
+		PredictValues: predictValues,
+		PredictError:  predictError,
+		PredictDelay:  predictDelay,
+	}
+}
+
+func (p *FakeResponseTimePredictor) Endpoint(appName string) (string, error) {
+	if p.EndpointError != nil {
+		return "", p.EndpointError
+	}
+	return fmt.Sprintf("%s#%s", p.EndpointValue, appName), nil
+}
+
+func (p *FakeResponseTimePredictor) Predict(ctx context.Context, appName string, cpuUsage float64) (t float64, err error) {
+	select {
+	case <-ctx.Done():
+		return 0.0, ctx.Err()
+	case <-time.After(p.PredictDelay):
+		break
+	}
+
+	if p.PredictError != nil {
+		return 0.0, p.PredictError
+	}
+
+	v, ok := p.PredictValues[appName]
+	if !ok {
+		// check default value
+		vDefault, ok := p.PredictValues["*"]
+		if !ok {
+			return 0.0, p.PredictError
+		}
+		return vDefault, nil
+	}
+	return v, nil
 }

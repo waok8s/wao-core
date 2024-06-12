@@ -24,6 +24,6 @@ type PowerConsumptionPredictor interface {
 }
 
 type ResponseTimePredictor interface {
-	Endpoint() (string, error)
-	// Predict() // TODO: define this method
+	Endpoint(appName string) (string, error)
+	Predict(ctx context.Context, appName string, cpuUsage float64) (t float64, err error)
 }
