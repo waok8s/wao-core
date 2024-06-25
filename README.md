@@ -63,10 +63,12 @@ We provide tools to test these requirements are met. Try the following.
 go run github.com/waok8s/wao-core/pkg/metrics/redfish/cmd/redfish_inlettemp_cli@HEAD -h
 # CLI to get delta_p from DifferentialPressureAPI server.
 go run github.com/waok8s/wao-core/pkg/metrics/dpapi/cmd/dpapi_deltap_cli@HEAD -h
-# CLI to get power consumption from V2InferenceProtocol server.
+# CLI to predict power consumption from V2InferenceProtocol server.
 go run github.com/waok8s/wao-core/pkg/predictor/v2inferenceprotocol/cmd/v2ip_pcp_cli@HEAD -h
 # CLI to get power consumption predictor endpoint from Redfish server.
 go run github.com/waok8s/wao-core/pkg/predictor/redfish/cmd/redfish_ep_cli@HEAD -h
+# CLI to predict response time from V2InferenceProtocol server.
+go run github.com/waok8s/wao-core/pkg/predictor/v2inferenceprotocol/cmd/v2ip_rtp_cli@HEAD -h
 ```
 
 > [!NOTE]

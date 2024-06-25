@@ -15,18 +15,12 @@ import (
 )
 
 func main() {
-	var address string
-	flag.StringVar(&address, "address", "http://localhost:5000", "Prediction service URL")
-	var model string
-	flag.StringVar(&model, "model", "modelName", "Model name")
-	var modelVersion string
-	flag.StringVar(&modelVersion, "modelVersion", "v1.0.0", "Model version")
+	var urlTmpl string
+	flag.StringVar(&urlTmpl, "urlTemplate", "http://localhost:5000/v2/models/myModel:{{.App}}/versions/v0.1.0/infer", "Prediction service URL template")
+	var appName string
+	flag.StringVar(&appName, "appName", "app", "App name")
 	var cpuUsage float64
 	flag.Float64Var(&cpuUsage, "cpuUsage", 0.0, "CPU usage")
-	var inletTemp float64
-	flag.Float64Var(&inletTemp, "inletTemp", 0.0, "Inlet temperature")
-	var deltaP float64
-	flag.Float64Var(&deltaP, "deltaP", 0.0, "Delta P")
 	var basicAuth string
 	flag.StringVar(&basicAuth, "basicAuth", "", "Basic auth in username@password format")
 	var timeout time.Duration
@@ -55,19 +49,19 @@ func main() {
 		AddSource: true,
 		Level:     slogLevel,
 	}))
-	slog.SetDefault(lg.With("component", "PowerConsumptionPredictor (V2InferenceProtocol)"))
+	slog.SetDefault(lg.With("component", "ResponseTimePredictor (V2InferenceProtocol)"))
 
 	requestEditorFns := []util.RequestEditorFn{}
 	ss := strings.Split(basicAuth, ":")
 	if len(ss) == 2 {
 		requestEditorFns = append(requestEditorFns, util.WithBasicAuth(ss[0], ss[1]))
 	}
-	requestEditorFns = append(requestEditorFns, util.WithCurlLogger(lg.With("func", "WithCurlLogger(v2inferenceprotocol.PowerConsumptionPredictor.Predict)")))
+	requestEditorFns = append(requestEditorFns, util.WithCurlLogger(lg.With("func", "WithCurlLogger(v2inferenceprotocol.ResponseTimePredictor.Predict)")))
 
-	c := v2inferenceprotocol.NewPowerConsumptionPredictor(address, model, modelVersion, true, timeout, requestEditorFns...)
+	c := v2inferenceprotocol.NewResponseTimePredictor(urlTmpl, true, timeout, requestEditorFns...)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	v, err := c.Predict(ctx, cpuUsage, inletTemp, deltaP)
+	v, err := c.Predict(ctx, appName, cpuUsage)
 	cancel()
 	if err != nil {
 		log.Fatal(err)

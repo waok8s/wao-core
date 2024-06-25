@@ -173,7 +173,9 @@ func newInferResponseTimeRequest(_ string, cpuUsage float64) *inferResponseTimeR
 //	      "name": "predict",
 //	      "shape": [ 1, 1 ],
 //	      "datatype": "FP64",
-//	      "parameters": null,
+//	      "parameters": {
+//          "content_type": "np"
+//      },
 //	      "data": [ 20.0 ]
 //	    }
 //	  ]
