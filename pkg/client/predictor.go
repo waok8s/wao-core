@@ -31,30 +31,36 @@ func NewCachedPredictorClient(client kubernetes.Interface, ttl time.Duration) *C
 func predictorCacheKey(valueType string,
 	namespace string, endpointTerm *waov1beta1.EndpointTerm, // common
 	predictorType predictor.PredictorType, // GetPredictorEndpoint
-	cpuUsage, inletTemp, deltaP float64, // PredictPowerConsumption
+	appName string, // PredictResponseTime
+	cpuUsage float64, // PredictPowerConsumption, PredictResponseTime
+	inletTemp float64, // PredictPowerConsumption
+	deltaP float64, // PredictPowerConsumption
 ) string {
+	if endpointTerm == nil {
+		endpointTerm = &waov1beta1.EndpointTerm{}
+	}
 	secretName := ""
 	if endpointTerm.BasicAuthSecret != nil {
 		secretName = endpointTerm.BasicAuthSecret.Name
 	}
 	ep := fmt.Sprintf("%s|%s|%s", endpointTerm.Type, endpointTerm.Endpoint, secretName)
-	return fmt.Sprintf("%s#%s#%s#%s#%f#%f#%f", valueType, namespace, ep, predictorType, cpuUsage, inletTemp, deltaP)
+	return fmt.Sprintf("%s#%s#%s#%s#%s#%.6f#%.6f#%.6f", valueType, namespace, ep, predictorType, appName, cpuUsage, inletTemp, deltaP)
 }
 
 const (
 	valueTypePowerConsumptionEndpoint = "PowerConsumptionEndpoint"
 	valueTypeWatt                     = "Watt"
 
-	// valueTypeResponseTimeEndpoint = "ResponseTimeEndpoint"
-	// valueTypeResponseTime         = "ResponseTime"
+	valueTypeResponseTimeEndpoint = "ResponseTimeEndpoint"
+	valueTypeResponseTime         = "ResponseTime"
 )
 
 type predictionCache struct {
 	PowerConsumptionEndpoint *waov1beta1.EndpointTerm
 	Watt                     float64
 
-	// ResponseTimeEndpoint *waov1beta1.EndpointTerm
-	// ResponseTime         float64
+	ResponseTimeEndpoint *waov1beta1.EndpointTerm
+	ResponseTime         float64
 
 	ExpiredAt time.Time
 }
@@ -62,10 +68,13 @@ type predictionCache struct {
 func (c *CachedPredictorClient) do(ctx context.Context, valueType string,
 	namespace string, endpointTerm *waov1beta1.EndpointTerm, // common
 	predictorType predictor.PredictorType, // GetPredictorEndpoint
-	cpuUsage, inletTemp, deltaP float64, // PredictPowerConsumption
+	appName string, // PredictResponseTime
+	cpuUsage float64, // PredictPowerConsumption, PredictResponseTime
+	inletTemp float64, // PredictPowerConsumption
+	deltaP float64, // PredictPowerConsumption
 ) (*predictionCache, error) {
 
-	key := predictorCacheKey(valueType, namespace, endpointTerm, predictorType, cpuUsage, inletTemp, deltaP)
+	key := predictorCacheKey(valueType, namespace, endpointTerm, predictorType, appName, cpuUsage, inletTemp, deltaP)
 	lg := slog.With("func", "CachedPredictorClient.do", "key", key)
 
 	if v, ok1 := c.cache.Load(key); ok1 {
@@ -103,6 +112,26 @@ func (c *CachedPredictorClient) do(ctx context.Context, valueType string,
 			return nil, err
 		}
 		cv.Watt = watt
+	case valueTypeResponseTimeEndpoint:
+		prov, err := fromnodeconfig.NewEndpointProvider(c.client, namespace, endpointTerm)
+		if err != nil {
+			return nil, err
+		}
+		ep, err := prov.Get(ctx, predictorType)
+		if err != nil {
+			return nil, err
+		}
+		cv.ResponseTimeEndpoint = ep
+	case valueTypeResponseTime:
+		pred, err := fromnodeconfig.NewResponseTimePredictor(c.client, namespace, endpointTerm)
+		if err != nil {
+			return nil, err
+		}
+		t, err := pred.Predict(ctx, appName, cpuUsage)
+		if err != nil {
+			return nil, err
+		}
+		cv.ResponseTime = t
 	default:
 		return nil, fmt.Errorf("unknown valueType=%s", valueType)
 	}
@@ -113,7 +142,7 @@ func (c *CachedPredictorClient) do(ctx context.Context, valueType string,
 }
 
 func (c *CachedPredictorClient) GetPredictorEndpoint(ctx context.Context, namespace string, ep *waov1beta1.EndpointTerm, predictorType predictor.PredictorType) (*waov1beta1.EndpointTerm, error) {
-	cv, err := c.do(ctx, valueTypePowerConsumptionEndpoint, namespace, ep, predictorType, 0.0, 0.0, 0.0)
+	cv, err := c.do(ctx, valueTypePowerConsumptionEndpoint, namespace, ep, predictorType, "", 0.0, 0.0, 0.0)
 	if err != nil {
 		return nil, err
 	}
@@ -121,9 +150,17 @@ func (c *CachedPredictorClient) GetPredictorEndpoint(ctx context.Context, namesp
 }
 
 func (c *CachedPredictorClient) PredictPowerConsumption(ctx context.Context, namespace string, ep *waov1beta1.EndpointTerm, cpuUsage, inletTemp, deltaP float64) (watt float64, err error) {
-	cv, err := c.do(ctx, valueTypeWatt, namespace, ep, "", cpuUsage, inletTemp, deltaP)
+	cv, err := c.do(ctx, valueTypeWatt, namespace, ep, "", "", cpuUsage, inletTemp, deltaP)
 	if err != nil {
 		return 0.0, err
 	}
 	return cv.Watt, nil
+}
+
+func (c *CachedPredictorClient) PredictResponseTime(ctx context.Context, namespace string, ep *waov1beta1.EndpointTerm, appName string, cpuUsage float64) (t float64, err error) {
+	cv, err := c.do(ctx, valueTypeResponseTime, namespace, ep, "", appName, cpuUsage, 0.0, 0.0)
+	if err != nil {
+		return 0.0, err
+	}
+	return cv.ResponseTime, nil
 }

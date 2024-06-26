@@ -127,6 +127,10 @@ var (
 						Type:     v1beta1.TypeFake,
 						Endpoint: testNCT0EP,
 					},
+					ResponseTimeEndpointProvider: &v1beta1.EndpointTerm{
+						Type:     v1beta1.TypeFake,
+						Endpoint: testNC0EP,
+					},
 				},
 			},
 		},
@@ -155,6 +159,10 @@ var (
 					Type:     v1beta1.TypeFake,
 					Endpoint: testNC0EP,
 				},
+				ResponseTimeEndpointProvider: &v1beta1.EndpointTerm{
+					Type:     v1beta1.TypeFake,
+					Endpoint: testNC0EP,
+				},
 			},
 		},
 	}
@@ -179,6 +187,10 @@ var (
 				PowerConsumptionEndpointProvider: &v1beta1.EndpointTerm{
 					Type:     v1beta1.TypeFake,
 					Endpoint: testNC1EP,
+				},
+				ResponseTimeEndpointProvider: &v1beta1.EndpointTerm{
+					Type:     v1beta1.TypeFake,
+					Endpoint: testNC0EP,
 				},
 			},
 		},

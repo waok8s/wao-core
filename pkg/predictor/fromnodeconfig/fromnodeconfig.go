@@ -107,3 +107,36 @@ func newPowerConsumptionPredictor(
 
 	return pred, nil
 }
+
+func NewResponseTimePredictor(client kubernetes.Interface, namespace string, endpointTerm *waov1beta1.EndpointTerm) (predictor.ResponseTimePredictor, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	username, password := util.GetBasicAuthFromNamespaceScopedSecret(ctx, client, namespace, endpointTerm.BasicAuthSecret)
+
+	return newResponseTimePredictor(endpointTerm.Type, endpointTerm.Endpoint, username, password, true, 3*time.Second)
+}
+
+func newResponseTimePredictor(
+	endpointType, endpoint string,
+	basicAuthUsername, basicAuthPassword string,
+	insecureSkipVerify bool, requestTimeout time.Duration,
+) (predictor.ResponseTimePredictor, error) {
+
+	var pred predictor.ResponseTimePredictor
+
+	switch endpointType {
+	case waov1beta1.TypeFake:
+		pred = fake.NewResponseTimePredictor(endpoint, nil, map[string]float64{"*": 42.0}, nil, 50*time.Millisecond)
+	case waov1beta1.TypeV2InferenceProtocol:
+		requestEditorFns := []util.RequestEditorFn{
+			util.WithBasicAuth(basicAuthUsername, basicAuthPassword),
+			util.WithCurlLogger(slog.With("func", "WithCurlLogger(v2inferenceprotocol.PowerConsumptionClient.Predict)")),
+		}
+
+		pred = v2inferenceprotocol.NewResponseTimePredictor(endpoint, insecureSkipVerify, requestTimeout, requestEditorFns...)
+	default:
+		return nil, fmt.Errorf("unknown endpoint type: %s", endpointType)
+	}
+
+	return pred, nil
+}
