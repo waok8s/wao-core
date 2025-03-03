@@ -277,8 +277,8 @@ This project uses [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) 
 
 Versioning: we use the same major.minor as Kubernetes, and the patch is our own.
 
-- What comes next?
-  - Upgrade `kubebuilder`. NOTE: We use `kube-rbac-proxy:v0.14.1` so [`gcr.io` retirement](https://github.com/kubernetes-sigs/kubebuilder/discussions/3907) affects us. The workaround is to use other image registry.
+- 2025-03-03 `v1.30.2`
+  - Switch `kube-rbac-proxy` image source from `gcr.io` (deprecated) to `quay.io`.
 - 2025-02-26 `v1.30.1`
   - Bug fixes and improvements.
 - 2024-05-17 `v1.30.0`
